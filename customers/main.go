@@ -25,15 +25,29 @@ func main() {
 	}
 	DBManagaer := NewDBManagaer(db)
 
-	td1, err := DBManagaer.CreateCustomer(&Customer{
-		first_name:   "Ismoilljon",
-		last_name:    "Rustamov",
-		phone_number: "+9998938108406",
-		gender:       1,
+	// td1, err := DBManagaer.CreateCustomer(&Customer{
+	// 	first_name:   "Burxon",
+	// 	last_name:    "Nuriddinov",
+	// 	phone_number: "+999897717170",
+	// 	gender:       1,
+	// })
+	// if err != nil {
+	// 	log.Fatalf("Failed to Create Customer: %v", err)
+	// }
+	// fmt.Println(td1)
+
+	customers,err := DBManagaer.GetAll(&GetAllParam{
+		limit: 10,
+		page: 2,
 	})
 	if err != nil {
-		log.Fatalf("Failed to Create Customer: %v", err)
+		log.Fatalf("Failed to GetAll: %v", err)
 	}
-	fmt.Println(td1)
+	for _,val := range  customers.customers {
+		fmt.Println(*val) 	
+	}
+
+
+
 
 }

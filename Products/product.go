@@ -104,7 +104,7 @@ func (m *DBManager) Get(id int64) (*Product, error) {
 		p.created_at
 	FROM products p
 	INNER JOIN categories c on c.id = p.category_id
-	WHERE P.id=$1`
+	WHERE p.id=$1`
 
 	row := m.db.QueryRow(query, id)
 
@@ -163,7 +163,7 @@ func (m *DBManager) GetAllProducts(params *GetProductsParams) (*GetProductsRespo
 	filter := ""
 	if params.Search != "" {
 		filter = fmt.Sprintf("Where name ilike '%s'",
-			"%"+params.Search+"%")
+			"%"+params.Search+"%")				           
 	}
 	query := `SELECT
 		p.id,
@@ -285,3 +285,5 @@ func (m *DBManager) DeleteProduct(id int64) error {
 	return nil
 
 }
+
+
