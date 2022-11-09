@@ -14,38 +14,40 @@ func NewDBManager(db *sql.DB) DBManager {
 	return DBManager{db}
 }
 
-type Orders struct {
-	id           int
-	customer_id  int
-	total_amount float64
-	created_at   time.Time
-	address      string
-	Items        []*Orders_items
+type Order struct {
+	Id          int
+	CustomerId  int
+	TotalAmount float64
+	CreatedAt   time.Time
+	Address     string
+	Items       []*OrderItems
 }
 
-type Orders_items struct {
-	id           int
-	order_id     int
-	product_id   int
-	count        int
-	total_price  float64
-	product_name string
+type OrderItems struct {
+	Id          int
+	OrderId     int
+	ProductId   int
+	Count       int
+	TotalPrice  float64
+	ProductName string
 }
 
 type GetOrdersParams struct {
-	limit  int32
-	page   int32
-	search string
+	Limit  int32
+	Page   int32
+	Search string
 }
 
 type GetOrdersRespone struct {
-	orders []*Orders_items
-	count  int32
+	Orders []*Order
+	Count  int32
 }
 
-func (m *DBManager) CreateOrders(or *Orders) (int, error) {
+func (m *DBManager) CreateOrders(or *Order) (int, error) {
 	tx, err := m.db.Begin()
+
 	var orderID int
+
 	query := `INSERT INTO orders (
 		customer_id,
 		total_amount,
@@ -55,13 +57,13 @@ func (m *DBManager) CreateOrders(or *Orders) (int, error) {
 	`
 
 	row := tx.QueryRow(query,
-		or.customer_id,
-		or.total_amount,
-		or.created_at,
+		or.CustomerId,
+		or.TotalAmount,
+		or.CreatedAt,
 	)
 	err = row.Scan(&orderID)
-	tx.Rollback()
 	if err != nil {
+		tx.Rollback()
 		return 0, err
 	}
 
@@ -78,11 +80,11 @@ func (m *DBManager) CreateOrders(or *Orders) (int, error) {
 	for _, item := range or.Items {
 		_, err := tx.Exec(
 			queryInsertItems,
-			item.product_id,
+			item.ProductId,
 			orderID,
-			item.count,
-			item.total_price,
-			item.product_name,
+			item.Count,
+			item.TotalPrice,
+			item.ProductName,
 		)
 		if err != nil {
 			tx.Rollback()
@@ -93,10 +95,10 @@ func (m *DBManager) CreateOrders(or *Orders) (int, error) {
 	return orderID, nil
 }
 
-func (m *DBManager) GetOrders(id int) (*Orders, error) {
-	var order Orders
+func (m *DBManager) GetOrder(id int) (*Order, error) {
+	var order Order
 
-	order.Items = make([]*Orders_items, 0)
+	order.Items = make([]*OrderItems, 0)
 
 	query := `
 		SELECT 
@@ -105,16 +107,16 @@ func (m *DBManager) GetOrders(id int) (*Orders, error) {
 		total_amount,
 		created_at,
 		address
-		from orders where id = $1
+		FROM orders WHERE id = $1
 		`
 	row := m.db.QueryRow(query, id)
 
 	err := row.Scan(
-		&order.id,
-		&order.customer_id,
-		&order.total_amount,
-		&order.created_at,
-		&order.address,
+		&order.Id,
+		&order.CustomerId,
+		&order.TotalAmount,
+		&order.CreatedAt,
+		&order.Address,
 	)
 	if err != nil {
 		return nil, err
@@ -122,12 +124,12 @@ func (m *DBManager) GetOrders(id int) (*Orders, error) {
 
 	queryItems := `
 		SELECT
-		id,
-		order_id,
-		product_id,
-		count,
-		total_price,
-		product_name
+			id,
+			order_id,
+			product_id,
+			count,
+			total_price,
+			product_name
 		FROM order_items
 		WHERE order_id=$1`
 
@@ -136,18 +138,19 @@ func (m *DBManager) GetOrders(id int) (*Orders, error) {
 	if err != nil {
 		return nil, err
 	}
-	rows.Close()
+	defer rows.Close()
 	for rows.Next() {
-		var orit Orders_items
+		var orit OrderItems
 
-		err := row.Scan(
-			&orit.id,
-			&orit.order_id,
-			&orit.product_id,
-			&orit.count,
-			&orit.total_price,
-			&orit.product_name,
+		err := rows.Scan(
+			&orit.Id,
+			&orit.OrderId,
+			&orit.ProductId,
+			&orit.Count,
+			&orit.TotalPrice,
+			&orit.ProductName,
 		)
+		fmt.Println(orit)
 		if err != nil {
 			return nil, err
 		}
@@ -159,51 +162,46 @@ func (m *DBManager) GetOrders(id int) (*Orders, error) {
 func (m *DBManager) GetAllOrders(params *GetOrdersParams) (*GetOrdersRespone, error) {
 	var res GetOrdersRespone
 
-	res.orders = make([]*Orders_items, 0)
-	offset := (params.page - 1) * params.limit
+	res.Orders = make([]*Order, 0)
+	offset := (params.Page - 1) * params.Limit
 	filter := ""
-	if params.search != "" {
-		filter = fmt.Sprintf("WHERE product_name like '%s'",
-			"%"+params.search+"%")
+	if params.Search != "" {
+		filter = fmt.Sprintf("WHERE customer_id = %s", params.Search)
 	}
 
 	query := `
 	SELECT 
-		o2.id,
 		o1.id,
-		o2.product_name,
-		o2.product_id,
-		o2.count,
+		o1.customer_id,
+		o1.address,
 		o1.total_amount
-	FROM orders o1 JOIN order_items o2 ON o2.order_id = o1.id
+	FROM orders o1  
 	` + filter + `
-	ORDER BY o2.id asc LIMIT $1 OFFSET $2
+	ORDER BY o1.created_at ASC LIMIT $1 OFFSET $2
 	`
-	rows, err := m.db.Query(query, params.limit, offset)
+	rows, err := m.db.Query(query, params.Limit, offset)
 	if err != nil {
 		return nil, err
 	}
 
 	defer rows.Close()
 	for rows.Next() {
-		var orders Orders_items
+		var order Order
 		err := rows.Scan(
-			&orders.id,
-			&orders.order_id,
-			&orders.product_name,
-			&orders.product_id,
-			&orders.count,
-			&orders.total_price,
+			&order.Id,
+			&order.CustomerId,
+			&order.Address,
+			&order.TotalAmount,
 		)
 		if err != nil {
 			return nil, err
 		}
-		res.orders = append(res.orders, &orders)
+		res.Orders = append(res.Orders, &order)
 	}
 	return &res, nil
 }
 
-func (m *DBManager) UpdateOrders(orders *Orders) error {
+func (m *DBManager) UpdateOrders(orders *Order) error {
 	tx, err := m.db.Begin()
 	query := `
 		UPDATE orders SET total_amount = $1
@@ -211,8 +209,8 @@ func (m *DBManager) UpdateOrders(orders *Orders) error {
 
 	result, err := m.db.Exec(
 		query,
-		orders.total_amount,
-		orders.customer_id,
+		orders.TotalAmount,
+		orders.CustomerId,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -230,7 +228,7 @@ func (m *DBManager) UpdateOrders(orders *Orders) error {
 		return sql.ErrNoRows
 	}
 	query = `DELETE FROM order_items WHERE order_id=$1`
-	_, err = m.db.Exec(query, orders.id)
+	_, err = m.db.Exec(query, orders.Id)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -242,15 +240,15 @@ func (m *DBManager) UpdateOrders(orders *Orders) error {
 			product_id,
 			count,
 			total_price,
-		) VALUES($1,$2,$3,$4,$5`
+		) VALUES($1,$2,$3,$4,$5)`
 	for _, v := range orders.Items {
 		_, err := m.db.Exec(
 			query,
-			v.order_id,
-			v.product_name,
-			v.product_id,
-			v.count,
-			v.total_price,
+			v.OrderId,
+			v.ProductName,
+			v.ProductId,
+			v.Count,
+			v.TotalPrice,
 		)
 		if err != nil {
 			tx.Rollback()
@@ -261,8 +259,8 @@ func (m *DBManager) UpdateOrders(orders *Orders) error {
 	return nil
 }
 
-func (m *DBManager) DeleteOrders(order_id int) error {
-	query := `DELETE FROM order_items WHERE order_id=$!`
+func (m *DBManager) DeleteOrder(order_id int) error {
+	query := `DELETE FROM order_items WHERE order_id=$1`
 	row, err := m.db.Exec(query, order_id)
 	if err != nil {
 		return err

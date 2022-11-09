@@ -33,23 +33,23 @@ func main() {
 
 	m := NewDBManager(db)
 
-	// _, err = m.CreateOrders(&Orders{
-	// 	customer_id:  1,
-	// 	total_amount: 100,
-	// 	address:       "Chilonzor",
-	// 	Items: []*Orders_items{
+	// _, err = m.CreateOrders(&Order{
+	// 	CustomerId:  1,
+	// 	TotalAmount: 100,
+	// 	Address:       "Chilonzor",
+	// 	Items: []*OrderItems{
 	// 		{
-	// 			product_id:   2,
-	// 			order_id: 2,
-	// 			count:        2,
-	// 			total_price:  100.00,
-	// 			product_name: "Jacket",
+	// 			ProductId:   2,
+	// 			OrderId: 2,
+	// 			Count:        2,
+	// 			TotalPrice:  100.00,
+	// 			ProductName: "Jacket",
 	// 		},
 	// 		{
-	// 			product_id:   2,
-	// 			count:        3,
-	// 			total_price:  140.00,
-	// 			product_name: "Shoes",
+	// 			ProductId:   2,
+	// 			Count:        3,
+	// 			TotalPrice:  140.00,
+	// 			ProductName: "Shoes",
 	// 		},
 	// 	},
 	// })
@@ -57,21 +57,40 @@ func main() {
 	// 	log.Fatalf("failed to create Items: %v", err)
 	// }
 
-	// order, err := m.GetOrders(id)
+	// order, err := m.GetOrder(67)
 	// if err != nil {
 	// 	log.Fatalln(err)
 	// }
-	// fmt.Println(order)
+	// fmt.Println(order.Id)
+	// fmt.Println(order.TotalAmount)
+	// fmt.Println(order.Address)
+	// fmt.Println(order.CreatedAt)
+	// fmt.Println(order.CustomerId)
+	// fmt.Println(order.Items)
 
 	// orders, err := m.GetAllOrders(&GetOrdersParams{
-	// 	limit: 10,
-	// 	page: 1,
-	// 	search: "Jacket",
+	// 	Limit: 10,
+	// 	Page: 1,
+	// 	Search: "1",
 	// })
 	// if err != nil {
 	// 	log.Fatalln(err)
 	// }
 	// fmt.Println(orders)
 
-	m.DeleteOrders(17)
+	err = m.DeleteOrder(68)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// err = m.UpdateOrders(&Order{
+	// 	Id: 68,
+	// 	CustomerId: 1,
+	// 	TotalAmount: 100,
+	// })
+	// if err != nil {
+	// 	log.Fatalln(err) 
+	// }
+
+
 }
